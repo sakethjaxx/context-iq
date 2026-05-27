@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🧠 ContextIQ
 
 > Know when your AI is losing its mind — before it does.
@@ -234,3 +235,6 @@ context-iq/
 ## License
 
 MIT — free to use, modify, and distribute.
+=======
+# context-iq
+>>>>>>> 8898eca4ab223382c09f9c9b2173587e2d823153

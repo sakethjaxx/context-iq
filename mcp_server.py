@@ -40,35 +40,32 @@ async def list_tools() -> list[types.Tool]:
     return [
         types.Tool(
             name="track_turn",
-            description=(
-                "Call this after EVERY response to track token usage. "
-                "Pass the input_tokens and output_tokens from this turn."
-            ),
+            description="Track token usage after every response.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "input_tokens":          {"type": "integer", "description": "Input tokens this turn (excluding cache)"},
-                    "output_tokens":         {"type": "integer", "description": "Output tokens this turn"},
-                    "cache_read_tokens":     {"type": "integer", "description": "Cache read tokens (optional, Claude only)"},
-                    "cache_creation_tokens": {"type": "integer", "description": "Cache creation tokens (optional, Claude only)"},
-                    "model":                 {"type": "string",  "description": "Model name (optional)"},
+                    "input_tokens":          {"type": "integer"},
+                    "output_tokens":         {"type": "integer"},
+                    "cache_read_tokens":     {"type": "integer"},
+                    "cache_creation_tokens": {"type": "integer"},
+                    "model":                 {"type": "string"},
                 },
                 "required": ["input_tokens", "output_tokens"],
             },
         ),
         types.Tool(
             name="get_context_pressure_score",
-            description="Get session context pressure score (0-100) and pressure stats. Call when asked about session health.",
+            description="Get context pressure score and session health. Call when asked about session health.",
             inputSchema={"type": "object", "properties": {}, "required": []},
         ),
         types.Tool(
             name="get_session_stats",
-            description="Get full token usage stats for the current session.",
+            description="Get full token usage stats.",
             inputSchema={"type": "object", "properties": {}, "required": []},
         ),
         types.Tool(
             name="reset_session",
-            description="Reset session token counts. Call when starting a new topic or after /clear.",
+            description="Reset session. Call after /clear or when starting fresh.",
             inputSchema={"type": "object", "properties": {}, "required": []},
         ),
     ]

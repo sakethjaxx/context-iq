@@ -28,8 +28,14 @@ def main():
         console.print("[red]Error: ANTHROPIC_API_KEY not set. Copy .env.example → .env and add key.[/red]")
         sys.exit(1)
 
-    model = sys.argv[1] if len(sys.argv) > 1 else "claude-sonnet-4-6"
-    session = ChatSession(model=model)
+    from providers import ClaudeProvider, GroqProvider
+    if len(sys.argv) > 1:
+        model = sys.argv[1]
+        provider = ClaudeProvider(model=model) if "claude" in model else GroqProvider(model=model)
+        session = ChatSession(provider=provider)
+    else:
+        session = ChatSession()
+    model = session.provider.model_id
 
     console.print(f"\n[bold green]Chat Token Usage[/bold green]  model: [cyan]{model}[/cyan]")
     console.print("Type [cyan]/help[/cyan] for commands.\n")

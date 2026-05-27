@@ -19,7 +19,8 @@ def _write_state(stats: SessionStats):
                 "total_output_tokens": stats.total_output_tokens,
                 "total_tokens": stats.total_tokens,
                 "live_context_tokens": stats.live_context_tokens,
-                "intelligence_score": stats.intelligence_score,
+                "context_pressure_score": stats.context_pressure_score,
+                "raw_pressure": round(stats.raw_pressure * 100, 1),
                 "status": stats.status,
                 "confidence": stats.confidence,
                 "context_pressure": round(stats.context_pressure * 100, 1),
@@ -56,8 +57,8 @@ async def list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
-            name="get_intelligence_score",
-            description="Get session intelligence score (0-100) and context pressure. Call when asked about session health.",
+            name="get_context_pressure_score",
+            description="Get session context pressure score (0-100) and pressure stats. Call when asked about session health.",
             inputSchema={"type": "object", "properties": {}, "required": []},
         ),
         types.Tool(
@@ -97,12 +98,13 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             "turns": _stats.turns,
             "total_tokens": _stats.total_tokens,
             "live_context_tokens": _stats.live_context_tokens,
-            "intelligence_score": _stats.intelligence_score,
+            "context_pressure_score": _stats.context_pressure_score,
+            "raw_pressure": round(_stats.raw_pressure * 100, 1),
             "status": _stats.status,
             "confidence": _stats.confidence,
         }))]
 
-    elif name == "get_intelligence_score":
+    elif name == "get_context_pressure_score":
         recommendations = {
             "fresh":    "Session healthy. No action needed.",
             "warm":     "Session warming up. Monitor usage.",
@@ -110,14 +112,15 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             "critical": "Critical pressure. Run /clear now.",
         }
         result = {
-            "score":               _stats.intelligence_score,
-            "status":              _stats.status,
-            "confidence":          _stats.confidence,
-            "context_used":        f"{_stats.context_pressure * 100:.1f}%",
-            "live_context_tokens": _stats.live_context_tokens,
-            "tokens_remaining":    max(0, _stats.usable_window - _stats.live_context_tokens),
-            "context_window_source": "known" if _stats.context_window_known else "defaulted",
-            "recommendation":      recommendations[_stats.status],
+            "context_pressure_score": _stats.context_pressure_score,
+            "raw_pressure":           round(_stats.raw_pressure * 100, 1),
+            "status":                 _stats.status,
+            "confidence":             _stats.confidence,
+            "context_used":           f"{_stats.context_pressure * 100:.1f}%",
+            "live_context_tokens":    _stats.live_context_tokens,
+            "tokens_remaining":       max(0, _stats.usable_window - _stats.live_context_tokens),
+            "context_window_source":  "known" if _stats.context_window_known else "defaulted",
+            "recommendation":         recommendations[_stats.status],
         }
         if _stats.confidence == "low":
             result["warning"] = "Sudden context drop detected — likely hidden compaction. Score may be optimistic."
@@ -130,13 +133,14 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             "model":          _stats.model,
             "turns":          _stats.turns,
             "health": {
-                "intelligence_score":  _stats.intelligence_score,
-                "status":              _stats.status,
-                "confidence":          _stats.confidence,
-                "live_context_tokens": _stats.live_context_tokens,
-                "context_used":        f"{_stats.context_pressure * 100:.1f}%",
-                "tokens_remaining":    max(0, _stats.usable_window - _stats.live_context_tokens),
-                "context_window_source": "known" if _stats.context_window_known else "defaulted",
+                "context_pressure_score": _stats.context_pressure_score,
+                "raw_pressure":           round(_stats.raw_pressure * 100, 1),
+                "status":                 _stats.status,
+                "confidence":             _stats.confidence,
+                "live_context_tokens":    _stats.live_context_tokens,
+                "context_used":           f"{_stats.context_pressure * 100:.1f}%",
+                "tokens_remaining":       max(0, _stats.usable_window - _stats.live_context_tokens),
+                "context_window_source":  "known" if _stats.context_window_known else "defaulted",
             },
             "usage": {
                 "total_input_tokens":  _stats.total_input_tokens,

@@ -15,7 +15,7 @@ try:
     with open(STATE_FILE, encoding="utf-8") as f:
         state = json.load(f)
 
-    score = state.get("intelligence_score", 100)
+    score = state.get("context_pressure_score", 100)
     tokens = state.get("total_tokens", 0)
     status = state.get("status", "fresh").upper()
     turns = state.get("turns", 0)

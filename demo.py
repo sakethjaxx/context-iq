@@ -23,7 +23,7 @@ def _bar(filled: int, total: int, color: str) -> str:
 
 
 def render_meter(s: SessionStats) -> Panel:
-    score = s.intelligence_score
+    score = s.context_pressure_score
     pressure = s.context_pressure
     color = s.status_color
     bar_width = 40
@@ -59,7 +59,7 @@ def show(label, input_tokens, output_tokens, turns, warning=None):
     s.total_output_tokens = output_tokens
     s.live_context_tokens = input_tokens
     s.turns = turns
-    console.rule(f"[bold] {label} | IQ: {s.intelligence_score:.0f}/100 | {s.status.upper()} ")
+    console.rule(f"[bold] {label} | IQ: {s.context_pressure_score:.0f}/100 | {s.status.upper()} ")
     console.print(render_stats(s))
     console.print(render_meter(s))
     if warning:

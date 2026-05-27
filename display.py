@@ -37,7 +37,7 @@ def render_stats_panel(stats: SessionStats) -> Panel:
 
 
 def render_meter_panel(stats: SessionStats) -> Panel:
-    score = stats.intelligence_score
+    score = stats.context_pressure_score
     pressure = stats.context_pressure
     color = stats.status_color
     status = stats.status.upper()

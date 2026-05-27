@@ -18,8 +18,8 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={"type": "object", "properties": {}, "required": []},
         ),
         types.Tool(
-            name="get_intelligence_score",
-            description="Get intelligence meter score (0-100) showing session freshness",
+            name="get_context_pressure_score",
+            description="Get context pressure score (0-100) showing session freshness",
             inputSchema={"type": "object", "properties": {}, "required": []},
         ),
         types.Tool(
@@ -53,15 +53,15 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         return [types.TextContent(type="text", text=json.dumps({
             "model": s.model,
             "turns": s.turns,
-            "input_tokens": s.input_tokens,
-            "output_tokens": s.output_tokens,
+            "total_input_tokens": s.total_input_tokens,
+            "total_output_tokens": s.total_output_tokens,
             "total_tokens": s.total_tokens,
             "cache_read_tokens": s.cache_read_tokens,
             "cache_creation_tokens": s.cache_creation_tokens,
             "context_window": s.context_window,
         }, indent=2))]
 
-    elif name == "get_intelligence_score":
+    elif name == "get_context_pressure_score":
         s = session.stats
         recommendations = {
             "fresh": "Session healthy. No action needed.",
@@ -70,7 +70,8 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             "critical": "Critical pressure. Reset strongly recommended.",
         }
         return [types.TextContent(type="text", text=json.dumps({
-            "score": s.intelligence_score,
+            "context_pressure_score": s.context_pressure_score,
+            "raw_pressure": round(s.raw_pressure * 100, 1),
             "status": s.status,
             "recommendation": recommendations[s.status],
         }, indent=2))]
@@ -79,9 +80,10 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         s = session.stats
         return [types.TextContent(type="text", text=json.dumps({
             "pressure_percent": round(s.context_pressure * 100, 2),
-            "tokens_used": s.input_tokens,
+            "raw_pressure_percent": round(s.raw_pressure * 100, 2),
+            "tokens_used": s.live_context_tokens,
             "context_window": s.context_window,
-            "tokens_remaining": s.context_window - s.input_tokens,
+            "tokens_remaining": max(0, s.usable_window - s.live_context_tokens),
         }, indent=2))]
 
     elif name == "send_message":
@@ -91,11 +93,12 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         return [types.TextContent(type="text", text=json.dumps({
             "response": response,
             "tokens_this_session": {
-                "input": s.input_tokens,
-                "output": s.output_tokens,
+                "input": s.total_input_tokens,
+                "output": s.total_output_tokens,
                 "total": s.total_tokens,
             },
-            "intelligence_score": s.intelligence_score,
+            "context_pressure_score": s.context_pressure_score,
+            "raw_pressure": round(s.raw_pressure * 100, 1),
             "status": s.status,
         }, indent=2))]
 

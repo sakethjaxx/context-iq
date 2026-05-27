@@ -89,8 +89,8 @@ print("""  # ContextIQ — Auto Token Tracking
   - `output_tokens`: your output token count for this turn
   - `model`: your model name
 
-  When the user asks "check context", "session health", or "intelligence score" — call
-  `context-iq__get_intelligence_score` and show the result.
+  When the user asks "check context", "session health", or "context pressure score" — call
+  `context-iq__get_context_pressure_score` and show the result.
 
   When the user runs /clear or says "reset session" — call `context-iq__reset_session`.""")
 

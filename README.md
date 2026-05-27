@@ -1,164 +1,170 @@
-<<<<<<< HEAD
 # 🧠 ContextIQ
 
 > Know when your AI is losing its mind — before it does.
 
-ContextIQ tracks token usage and shows a live **Intelligence Meter** for your chat sessions. As context fills up, AI responses get worse. ContextIQ tells you exactly how close you are to that cliff.
+ContextIQ tracks token usage and shows a live **Intelligence Meter** for your AI sessions. As context fills up, response quality silently degrades. ContextIQ makes that visible.
 
-**Free to use. Works with Groq (free tier) out of the box. Claude optional.**
-
----
-
-## What it looks like
-
-```
-You> explain quantum entanglement
-
-╭─ Assistant ──────────────────────────────────────────────────────╮
-│ Quantum entanglement is a phenomenon where two particles become  │
-│ correlated such that the quantum state of each particle cannot   │
-│ be described independently...                                    │
-╰──────────────────────────────────────────────────────────────────╯
-
-╭─ Session Stats ──────╮   ╭─ Intelligence Meter ─────────────────────────────╮
-│ Model   llama-3.3-70b│   │ Intelligence Score                               │
-│ Turns   4            │   │ ████████████████████████░░░░░░░░░░░░ 83/100 FRESH│
-│ Input   12,450       │   │                                                  │
-│ Output  3,821        │   │ Context Pressure                                 │
-│ Total   16,271       │   │ ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 9.7% of 128k│
-╰──────────────────────╯   ╰──────────────────────────────────────────────────╯
-```
+**Free. Open source. Two modes — pick one or use both.**
 
 ---
 
-## Install in 3 steps
+## Modes
 
-### Step 1 — Clone the repo
+| Mode | What it does | Needs API key? |
+|------|-------------|----------------|
+| **Standalone chat** | Terminal UI with live meter, powered by Groq | Yes (free) |
+| **MCP server** | Plugs into Claude Code / Claude Desktop | No |
+
+---
+
+## Quick start — MCP Server (Claude Code / Claude Desktop)
+
+If you already use Claude Code or Claude Desktop, this is the zero-cost path.
+
+### Step 1 — Clone & install
 
 ```bash
-git clone https://github.com/your-username/context-iq.git
+git clone https://github.com/sakethjaxx/context-iq.git
 cd context-iq
-```
-
-### Step 2 — Install Python packages
-
-```bash
 pip install -r requirements.txt
 ```
 
-> Requires Python 3.9+. Check with `python --version`.
+### Step 2 — Register the MCP server
 
-### Step 3 — Add your free API key
+**Claude Code CLI:**
+```bash
+claude mcp add -s user context-iq python "/path/to/context-iq/mcp_server.py"
+```
+
+**Claude Desktop** — add to `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "context-iq": {
+      "command": "python",
+      "args": ["/path/to/context-iq/mcp_server.py"]
+    }
+  }
+}
+```
+
+### Step 3 — Enable auto-tracking
+
+Add this to your global `~/.claude/CLAUDE.md` (create the file if it doesn't exist):
+
+```markdown
+# ContextIQ — Auto Token Tracking
+
+After EVERY response you give, call the `context-iq__track_turn` MCP tool with:
+- `input_tokens`: your input token count for this turn
+- `output_tokens`: your output token count for this turn
+- `model`: your model name
+
+When the user asks "check context", "session health", or "intelligence score" — call
+`context-iq__get_intelligence_score` and show the result.
+
+When the user runs /clear or says "reset session" — call `context-iq__reset_session`.
+```
+
+### Step 4 — Restart Claude Code
+
+### Step 5 — Ask Claude anytime:
+
+```
+check my context health
+```
+
+```
+what's my intelligence score
+```
+
+```
+session stats
+```
+
+---
+
+## Quick start — Standalone Chat (Groq, free)
+
+### Step 1 — Clone & install
+
+```bash
+git clone https://github.com/sakethjaxx/context-iq.git
+cd context-iq
+pip install -r requirements.txt
+```
+
+### Step 2 — Get a free Groq API key
+
+1. Sign up at [console.groq.com](https://console.groq.com) — no credit card needed
+2. Go to **API Keys** → **Create API Key** → copy it
+
+### Step 3 — Configure
 
 ```bash
 cp .env.example .env
 ```
 
-Open `.env` and paste your Groq key (see below for how to get one — it's free).
+Open `.env` and paste your key:
 
----
+```env
+PROVIDER=groq
+GROQ_API_KEY=gsk_your_key_here
+GROQ_MODEL=llama-3.3-70b-versatile
+```
 
-## Getting a free Groq API key
-
-Groq runs powerful AI models for free. No credit card needed.
-
-1. Go to **[console.groq.com](https://console.groq.com)** and create a free account
-2. Click **API Keys** in the left sidebar
-3. Click **Create API Key**, copy it
-4. Open your `.env` file and replace `gsk_your_key_here` with your key
-
-That's it. Run `python main.py` and start chatting.
-
----
-
-## Run it
+### Step 4 — Run
 
 ```bash
 python main.py
 ```
 
-To use a specific model:
-
-```bash
-python main.py llama-3.1-8b-instant
-```
-
 ---
 
-## Commands
+## What you see
 
-Type these during a chat session:
+```
+ContextIQ  model: llama-3.3-70b-versatile
+Type /help for commands.
+
+You> explain black holes
+
+╭─ Assistant ─────────────────────────────────────────────────╮
+│ A black hole is a region of spacetime where gravity is so   │
+│ strong that nothing — not even light — can escape...        │
+╰─────────────────────────────────────────────────────────────╯
+
+╭─ Session Stats ──────╮  ╭─ Intelligence Meter ──────────────────────────────╮
+│ Model   llama-3.3-70b│  │ Intelligence Score                                │
+│ Turns   3            │  │ ████████████████████████░░░░░░░░░░░░ 83/100 FRESH  │
+│ Input   9,240        │  │                                                   │
+│ Output  2,105        │  │ Context Pressure                                  │
+│ Total   11,345       │  │ ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 7.2% of 128k │
+╰──────────────────────╯  ╰───────────────────────────────────────────────────╯
+```
+
+### Commands
 
 | Command | What it does |
 |---------|-------------|
 | `/stats` | Show token counts + intelligence meter |
-| `/reset` | Start fresh — clears history and resets token count |
-| `/model` | Show which model you're using |
+| `/reset` | Clear history, reset token count |
+| `/model` | Show active model |
 | `/help` | Show all commands |
 | `/quit` | Exit |
 
 ---
 
-## Intelligence Meter — what the score means
+## Intelligence Meter
 
-The score shows how much of the AI's memory (context window) your session has consumed. The more filled it is, the worse responses get.
+Context degrades non-linearly — it feels fine until ~50% full, then quality drops fast.
 
 | Score | Status | What to do |
 |-------|--------|------------|
-| 70–100 | 🟢 FRESH | You're good |
-| 40–69 | 🟡 WARM | Keep an eye on it |
-| 15–39 | 🟠 STRAINED | Think about `/reset` |
+| 70–100 | 🟢 FRESH | Keep going |
+| 40–69 | 🟡 WARM | Monitor usage |
+| 15–39 | 🟠 STRAINED | Think about `/reset` or `/clear` |
 | 0–14 | 🔴 CRITICAL | Reset now |
-
-ContextIQ warns you automatically when things get strained.
-
----
-
-## Use Claude instead of Groq (optional)
-
-If you have a Claude API key, swap two lines in `.env`:
-
-```env
-PROVIDER=claude
-ANTHROPIC_API_KEY=sk-ant-your_key_here
-ANTHROPIC_MODEL=claude-sonnet-4-6
-```
-
-New to Claude? Sign up at [console.anthropic.com](https://console.anthropic.com) — free $5 credits on signup.
-
----
-
-## Use as an MCP tool (Claude Code / Claude Desktop)
-
-ContextIQ can run as an MCP server so Claude itself can check your session health.
-
-Add this to your MCP config:
-
-**Claude Code** (`~/.claude/settings.json`):
-```json
-{
-  "mcpServers": {
-    "context-iq": {
-      "command": "python",
-      "args": ["/path/to/context-iq/mcp_server.py"]
-    }
-  }
-}
-```
-
-**Claude Desktop** (`claude_desktop_config.json`):
-```json
-{
-  "mcpServers": {
-    "context-iq": {
-      "command": "python",
-      "args": ["/path/to/context-iq/mcp_server.py"]
-    }
-  }
-}
-```
-
-MCP tools available: `get_session_stats`, `get_intelligence_score`, `get_context_pressure`, `send_message`, `reset_session`
 
 ---
 
@@ -169,22 +175,25 @@ MCP tools available: `get_session_stats`, `get_intelligence_score`, `get_context
 | Model | Context window | Best for |
 |-------|---------------|----------|
 | `llama-3.3-70b-versatile` | 128k | Best quality (default) |
-| `llama-3.1-8b-instant` | 131k | Fastest responses |
+| `llama-3.1-8b-instant` | 131k | Fastest |
 | `mixtral-8x7b-32768` | 32k | Balanced |
 
 ### Claude (BYOK)
 
-| Model | Context window |
-|-------|---------------|
-| `claude-sonnet-4-6` | 200k |
-| `claude-opus-4-7` | 200k |
-| `claude-haiku-4-5` | 200k |
+Update `.env`:
+```env
+PROVIDER=claude
+ANTHROPIC_API_KEY=sk-ant-your_key_here
+ANTHROPIC_MODEL=claude-sonnet-4-6
+```
+
+New? Sign up at [console.anthropic.com](https://console.anthropic.com) — free $5 credits on signup.
 
 ---
 
 ## Add a new provider
 
-Implement `BaseProvider` in [providers.py](providers.py):
+Subclass `BaseProvider` in [providers.py](providers.py):
 
 ```python
 class OpenAIProvider(BaseProvider):
@@ -209,9 +218,7 @@ class OpenAIProvider(BaseProvider):
         )
 ```
 
-Then wire it up in `get_provider()` and add `"openai"` to the `PROVIDER` options.
-
-PRs welcome.
+Add it to `get_provider()` and send a PR.
 
 ---
 
@@ -219,12 +226,13 @@ PRs welcome.
 
 ```
 context-iq/
-├── main.py          # chat loop + commands
-├── chat.py          # session wrapper
-├── providers.py     # Groq, Claude (swappable)
+├── main.py          # standalone chat loop
+├── chat.py          # ChatSession wrapper
+├── providers.py     # GroqProvider, ClaudeProvider, BaseProvider
 ├── meter.py         # intelligence score algorithm
-├── display.py       # terminal UI (rich)
-├── mcp_server.py    # MCP server
+├── display.py       # rich terminal UI
+├── mcp_server.py    # MCP server (no API key needed)
+├── CLAUDE.md        # copy this to ~/.claude/CLAUDE.md for auto-tracking
 ├── requirements.txt
 ├── .env.example
 └── LICENSE          # MIT
@@ -235,6 +243,3 @@ context-iq/
 ## License
 
 MIT — free to use, modify, and distribute.
-=======
-# context-iq
->>>>>>> 8898eca4ab223382c09f9c9b2173587e2d823153

@@ -24,7 +24,9 @@ class ChatSession:
         self.stats.total_output_tokens += response.output_tokens
         self.stats.cache_read_tokens += response.cache_read_tokens
         self.stats.cache_creation_tokens += response.cache_creation_tokens
-        self.stats.live_context_tokens = response.input_tokens + response.output_tokens
+        effective_input = (response.input_tokens + response.cache_read_tokens
+                           + response.cache_creation_tokens)
+        self.stats.update_live_context(effective_input + response.output_tokens)
 
         return response.text
 

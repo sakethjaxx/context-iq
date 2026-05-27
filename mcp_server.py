@@ -21,6 +21,7 @@ def _write_state(stats: SessionStats):
                 "live_context_tokens": stats.live_context_tokens,
                 "intelligence_score": stats.intelligence_score,
                 "status": stats.status,
+                "confidence": stats.confidence,
                 "context_pressure": round(stats.context_pressure * 100, 1),
                 "context_window_source": "known" if stats.context_window_known else "defaulted",
             }, f)
@@ -45,9 +46,11 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "input_tokens":  {"type": "integer", "description": "Input tokens this turn"},
-                    "output_tokens": {"type": "integer", "description": "Output tokens this turn"},
-                    "model":         {"type": "string",  "description": "Model name (optional)"},
+                    "input_tokens":          {"type": "integer", "description": "Input tokens this turn (excluding cache)"},
+                    "output_tokens":         {"type": "integer", "description": "Output tokens this turn"},
+                    "cache_read_tokens":     {"type": "integer", "description": "Cache read tokens (optional, Claude only)"},
+                    "cache_creation_tokens": {"type": "integer", "description": "Cache creation tokens (optional, Claude only)"},
+                    "model":                 {"type": "string",  "description": "Model name (optional)"},
                 },
                 "required": ["input_tokens", "output_tokens"],
             },
@@ -78,10 +81,15 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         model = arguments.get("model")
         if model:
             _stats.model = model
+        cache_read     = arguments.get("cache_read_tokens", 0)
+        cache_creation = arguments.get("cache_creation_tokens", 0)
         _stats.turns += 1
-        _stats.total_input_tokens += arguments["input_tokens"]
+        _stats.total_input_tokens  += arguments["input_tokens"]
         _stats.total_output_tokens += arguments["output_tokens"]
-        _stats.live_context_tokens = arguments["input_tokens"] + arguments["output_tokens"]
+        _stats.cache_read_tokens      += cache_read
+        _stats.cache_creation_tokens  += cache_creation
+        effective_input = arguments["input_tokens"] + cache_read + cache_creation
+        _stats.update_live_context(effective_input + arguments["output_tokens"])
 
         _write_state(_stats)
         return [types.TextContent(type="text", text=json.dumps({
@@ -91,6 +99,7 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             "live_context_tokens": _stats.live_context_tokens,
             "intelligence_score": _stats.intelligence_score,
             "status": _stats.status,
+            "confidence": _stats.confidence,
         }))]
 
     elif name == "get_intelligence_score":
@@ -101,15 +110,18 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             "critical": "Critical pressure. Run /clear now.",
         }
         result = {
-            "score":              _stats.intelligence_score,
-            "status":             _stats.status,
-            "context_used":       f"{_stats.context_pressure * 100:.1f}%",
+            "score":               _stats.intelligence_score,
+            "status":              _stats.status,
+            "confidence":          _stats.confidence,
+            "context_used":        f"{_stats.context_pressure * 100:.1f}%",
             "live_context_tokens": _stats.live_context_tokens,
-            "tokens_remaining":   _stats.usable_window - _stats.live_context_tokens,
+            "tokens_remaining":    max(0, _stats.usable_window - _stats.live_context_tokens),
             "context_window_source": "known" if _stats.context_window_known else "defaulted",
-            "recommendation":     recommendations[_stats.status],
+            "recommendation":      recommendations[_stats.status],
         }
-        if not _stats.context_window_known:
+        if _stats.confidence == "low":
+            result["warning"] = "Sudden context drop detected — likely hidden compaction. Score may be optimistic."
+        elif not _stats.context_window_known:
             result["warning"] = f"Unknown model '{_stats.model}'; context window defaulted to {_stats.context_window:,}. Score may be inaccurate."
         return [types.TextContent(type="text", text=json.dumps(result, indent=2))]
 
@@ -120,9 +132,10 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             "health": {
                 "intelligence_score":  _stats.intelligence_score,
                 "status":              _stats.status,
+                "confidence":          _stats.confidence,
                 "live_context_tokens": _stats.live_context_tokens,
                 "context_used":        f"{_stats.context_pressure * 100:.1f}%",
-                "tokens_remaining":    _stats.usable_window - _stats.live_context_tokens,
+                "tokens_remaining":    max(0, _stats.usable_window - _stats.live_context_tokens),
                 "context_window_source": "known" if _stats.context_window_known else "defaulted",
             },
             "usage": {

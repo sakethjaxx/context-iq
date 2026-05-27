@@ -21,6 +21,7 @@ MODEL_CONTEXT_WINDOWS = {
 }
 DEFAULT_CONTEXT_WINDOW = 128_000
 RESPONSE_RESERVE = 4_096
+COMPACTION_DROP_THRESHOLD = 0.30  # 30% sudden drop → suspect compaction
 
 # Logistic scoring curve: plateau 0-40%, noticeable 40-70%, sharp 70-90%, cliff 90%+
 _SCORE_K = 14       # steepness — higher = sharper cliff
@@ -38,8 +39,13 @@ class SessionStats:
     total_output_tokens: int = 0
     cache_read_tokens: int = 0
     cache_creation_tokens: int = 0
-    # Live — approximated as last_input + last_output; use for health/pressure
+    # Live — effective_input (incl. cache) + output; use for health/pressure
     live_context_tokens: int = 0
+    _prev_live_context_tokens: int = field(default=0, repr=False)
+
+    def update_live_context(self, new_tokens: int) -> None:
+        self._prev_live_context_tokens = self.live_context_tokens
+        self.live_context_tokens = new_tokens
 
     @property
     def total_tokens(self) -> int:
@@ -60,6 +66,16 @@ class SessionStats:
     @property
     def context_pressure(self) -> float:
         return min(1.0, self.live_context_tokens / self.usable_window)
+
+    @property
+    def confidence(self) -> Literal["high", "medium", "low"]:
+        if not self.context_window_known:
+            return "medium"
+        # Sudden drop in live context → likely hidden compaction
+        prev = self._prev_live_context_tokens
+        if prev > 0 and self.live_context_tokens < prev * (1 - COMPACTION_DROP_THRESHOLD):
+            return "low"
+        return "high"
 
     @property
     def intelligence_score(self) -> float:

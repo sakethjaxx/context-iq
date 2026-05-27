@@ -15,12 +15,14 @@ def _write_state(stats: SessionStats):
             json.dump({
                 "model": stats.model,
                 "turns": stats.turns,
-                "input_tokens": stats.input_tokens,
-                "output_tokens": stats.output_tokens,
+                "total_input_tokens": stats.total_input_tokens,
+                "total_output_tokens": stats.total_output_tokens,
                 "total_tokens": stats.total_tokens,
+                "live_context_tokens": stats.live_context_tokens,
                 "intelligence_score": stats.intelligence_score,
                 "status": stats.status,
                 "context_pressure": round(stats.context_pressure * 100, 1),
+                "context_window_source": "known" if stats.context_window_known else "defaulted",
             }, f)
     except Exception:
         pass
@@ -77,14 +79,16 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         if model:
             _stats.model = model
         _stats.turns += 1
-        _stats.input_tokens += arguments["input_tokens"]
-        _stats.output_tokens += arguments["output_tokens"]
+        _stats.total_input_tokens += arguments["input_tokens"]
+        _stats.total_output_tokens += arguments["output_tokens"]
+        _stats.live_context_tokens = arguments["input_tokens"] + arguments["output_tokens"]
 
         _write_state(_stats)
         return [types.TextContent(type="text", text=json.dumps({
             "tracked": True,
             "turns": _stats.turns,
             "total_tokens": _stats.total_tokens,
+            "live_context_tokens": _stats.live_context_tokens,
             "intelligence_score": _stats.intelligence_score,
             "status": _stats.status,
         }))]
@@ -96,23 +100,39 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             "strained": "High context pressure. Consider /clear soon.",
             "critical": "Critical pressure. Run /clear now.",
         }
-        return [types.TextContent(type="text", text=json.dumps({
-            "score":          _stats.intelligence_score,
-            "status":         _stats.status,
-            "context_used":   f"{_stats.context_pressure * 100:.1f}%",
-            "tokens_remaining": _stats.context_window - _stats.input_tokens,
-            "recommendation": recommendations[_stats.status],
-        }, indent=2))]
+        result = {
+            "score":              _stats.intelligence_score,
+            "status":             _stats.status,
+            "context_used":       f"{_stats.context_pressure * 100:.1f}%",
+            "live_context_tokens": _stats.live_context_tokens,
+            "tokens_remaining":   _stats.usable_window - _stats.live_context_tokens,
+            "context_window_source": "known" if _stats.context_window_known else "defaulted",
+            "recommendation":     recommendations[_stats.status],
+        }
+        if not _stats.context_window_known:
+            result["warning"] = f"Unknown model '{_stats.model}'; context window defaulted to {_stats.context_window:,}. Score may be inaccurate."
+        return [types.TextContent(type="text", text=json.dumps(result, indent=2))]
 
     elif name == "get_session_stats":
         return [types.TextContent(type="text", text=json.dumps({
-            "model":         _stats.model,
-            "turns":         _stats.turns,
-            "input_tokens":  _stats.input_tokens,
-            "output_tokens": _stats.output_tokens,
-            "total_tokens":  _stats.total_tokens,
+            "model":          _stats.model,
+            "turns":          _stats.turns,
+            "health": {
+                "intelligence_score":  _stats.intelligence_score,
+                "status":              _stats.status,
+                "live_context_tokens": _stats.live_context_tokens,
+                "context_used":        f"{_stats.context_pressure * 100:.1f}%",
+                "tokens_remaining":    _stats.usable_window - _stats.live_context_tokens,
+                "context_window_source": "known" if _stats.context_window_known else "defaulted",
+            },
+            "usage": {
+                "total_input_tokens":  _stats.total_input_tokens,
+                "total_output_tokens": _stats.total_output_tokens,
+                "total_tokens":        _stats.total_tokens,
+                "cache_read_tokens":   _stats.cache_read_tokens,
+                "cache_creation_tokens": _stats.cache_creation_tokens,
+            },
             "context_window": _stats.context_window,
-            "context_used":  f"{_stats.context_pressure * 100:.1f}%",
         }, indent=2))]
 
     elif name == "reset_session":

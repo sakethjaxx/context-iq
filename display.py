@@ -26,8 +26,8 @@ def render_stats_panel(stats: SessionStats) -> Panel:
     table.add_column()
     table.add_row("Model", stats.model)
     table.add_row("Turns", str(stats.turns))
-    table.add_row("Input tokens", f"{stats.input_tokens:,}")
-    table.add_row("Output tokens", f"{stats.output_tokens:,}")
+    table.add_row("Input tokens", f"{stats.total_input_tokens:,}")
+    table.add_row("Output tokens", f"{stats.total_output_tokens:,}")
     table.add_row("Total tokens", f"{stats.total_tokens:,}")
     if stats.cache_read_tokens:
         table.add_row("Cache read", f"{stats.cache_read_tokens:,}")
@@ -51,7 +51,7 @@ def render_meter_panel(stats: SessionStats) -> Panel:
         f"{score_bar} [{color}]{score:.0f}/100 {status}[/{color}]\n\n"
         f"[bold]Context Pressure[/bold]\n"
         f"{pressure_bar} {pressure * 100:.1f}% of {stats.context_window // 1000}k window\n"
-        f"[dim]{stats.context_window - stats.input_tokens:,} tokens remaining[/dim]"
+        f"[dim]{stats.usable_window - stats.live_context_tokens:,} tokens remaining[/dim]"
     )
     return Panel(content, title="Intelligence Meter", border_style=color)
 

@@ -20,10 +20,11 @@ class ChatSession:
         self.history.append({"role": "assistant", "content": response.text})
 
         self.stats.turns += 1
-        self.stats.input_tokens += response.input_tokens
-        self.stats.output_tokens += response.output_tokens
+        self.stats.total_input_tokens += response.input_tokens
+        self.stats.total_output_tokens += response.output_tokens
         self.stats.cache_read_tokens += response.cache_read_tokens
         self.stats.cache_creation_tokens += response.cache_creation_tokens
+        self.stats.live_context_tokens = response.input_tokens + response.output_tokens
 
         return response.text
 

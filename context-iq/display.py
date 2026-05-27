@@ -1,10 +1,15 @@
+import sys
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 from meter import SessionStats
 
-console = Console()
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+
+console = Console(highlight=False)
 
 
 def render_stats_panel(stats: SessionStats) -> Panel:
@@ -57,8 +62,8 @@ def print_stats(stats: SessionStats):
 
 def print_warning(stats: SessionStats):
     msg = {
-        "strained": "[bold orange3]⚠ Session strained — consider /reset soon.[/bold orange3]",
-        "critical": "[bold red]⚠ CRITICAL context pressure — reset strongly recommended.[/bold red]",
+        "strained": "[bold orange3]! Session strained - consider /reset soon.[/bold orange3]",
+        "critical": "[bold red]!! CRITICAL context pressure - reset strongly recommended.[/bold red]",
     }.get(stats.status)
     if msg:
         console.print(msg)

@@ -54,7 +54,7 @@ def render_stats(s: SessionStats) -> Panel:
 
 
 def show(label, input_tokens, output_tokens, turns, warning=None):
-    s = SessionStats(model="llama-3.3-70b-versatile")
+    s = SessionStats(model="claude-sonnet-4-6")
     s.total_input_tokens = input_tokens
     s.total_output_tokens = output_tokens
     s.live_context_tokens = input_tokens
@@ -68,7 +68,7 @@ def show(label, input_tokens, output_tokens, turns, warning=None):
 
 
 show("GOOD",  input_tokens=5_000,   output_tokens=1_200,  turns=3)
-show("BAD",   input_tokens=89_600,  output_tokens=18_000, turns=12,
+show("BAD",   input_tokens=149_000, output_tokens=22_000, turns=12,
      warning="! Session strained - consider /reset soon.")
-show("UGLY",  input_tokens=118_000, output_tokens=24_000, turns=28,
+show("UGLY",  input_tokens=183_000, output_tokens=28_000, turns=28,
      warning="!! CRITICAL context pressure - reset strongly recommended.")

@@ -1,10 +1,23 @@
+import sys
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 from meter import SessionStats
 
-console = Console()
+# Force UTF-8 on Windows so block chars render correctly
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+
+console = Console(highlight=False)
+
+FILL = "█"
+EMPTY = "░"
+
+
+def _bar(filled: int, total: int, color: str) -> str:
+    return f"[{color}]{FILL * filled}[/{color}]{EMPTY * (total - filled)}"
 
 
 def render_stats_panel(stats: SessionStats) -> Panel:
@@ -30,11 +43,8 @@ def render_meter_panel(stats: SessionStats) -> Panel:
     status = stats.status.upper()
     bar_width = 40
 
-    filled = int(bar_width * (score / 100))
-    score_bar = f"[{color}]{'█' * filled}[/{color}]{'░' * (bar_width - filled)}"
-
-    p_filled = int(bar_width * pressure)
-    pressure_bar = f"[red]{'█' * p_filled}[/red]{'░' * (bar_width - p_filled)}"
+    score_bar = _bar(int(bar_width * score / 100), bar_width, color)
+    pressure_bar = _bar(int(bar_width * pressure), bar_width, "red")
 
     content = Text.from_markup(
         f"[bold]Intelligence Score[/bold]\n"
@@ -57,8 +67,8 @@ def print_stats(stats: SessionStats):
 
 def print_warning(stats: SessionStats):
     msg = {
-        "strained": "[bold orange3]⚠ Session strained — consider /reset soon.[/bold orange3]",
-        "critical": "[bold red]⚠ CRITICAL context pressure — reset strongly recommended.[/bold red]",
+        "strained": "[bold orange3]! Session strained - consider /reset soon.[/bold orange3]",
+        "critical": "[bold red]!! CRITICAL context pressure - reset strongly recommended.[/bold red]",
     }.get(stats.status)
     if msg:
         console.print(msg)

@@ -24,14 +24,17 @@ def print_help():
 
 
 def main():
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        console.print("[red]Error: ANTHROPIC_API_KEY not set. Copy .env.example → .env and add key.[/red]")
+    provider_name = os.getenv("PROVIDER", "groq").lower()
+    key_map = {"groq": "GROQ_API_KEY", "claude": "ANTHROPIC_API_KEY"}
+    required_key = key_map.get(provider_name)
+    if required_key and not os.getenv(required_key):
+        console.print(f"[red]Error: {required_key} not set for provider '{provider_name}'. Copy .env.example → .env and add key.[/red]")
         sys.exit(1)
 
-    model = sys.argv[1] if len(sys.argv) > 1 else "claude-sonnet-4-6"
-    session = ChatSession(model=model)
+    session = ChatSession()
+    model = session.provider.model_id
 
-    console.print(f"\n[bold green]Chat Token Usage[/bold green]  model: [cyan]{model}[/cyan]")
+    console.print(f"\n[bold green]ContextIQ[/bold green]  model: [cyan]{model}[/cyan]")
     console.print("Type [cyan]/help[/cyan] for commands.\n")
 
     while True:
@@ -54,7 +57,7 @@ def main():
             session.reset()
             console.print("[yellow]Session reset.[/yellow]")
         elif user_input == "/model":
-            console.print(f"Model: [cyan]{session.model}[/cyan]")
+            console.print(f"Model: [cyan]{session.provider.model_id}[/cyan]")
         elif user_input.startswith("/"):
             console.print(f"[red]Unknown command: {user_input}[/red]")
         else:

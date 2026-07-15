@@ -2,274 +2,170 @@
 
 > Know when your AI is losing its mind — before it does.
 
-ContextIQ tracks token usage and shows a live **Intelligence Meter** for your AI sessions. As context fills up, response quality silently degrades. ContextIQ makes that visible.
+ContextIQ shows a live **context-health meter** for your AI sessions. As the context window fills up, response quality silently degrades. ContextIQ makes that visible — in your Claude Code status line, a live terminal dashboard, or a standalone chat.
 
-**Free. Open source. No paid API required.**
+**Free. Open source. Measures real token counts — it never asks the model to guess.**
+
+```
+🟢 IQ:96 | 15.2k/200k ctx (8%) | $0.01      ← live status line in Claude Code
+```
 
 ---
 
 ## How it works
 
-```
-🟢 IQ:83 | 12,450tok | 4turns          ← live status bar in Claude Code
-```
+Claude Code pipes exact session data (token usage, context window size, cost) to status line scripts on stdin. ContextIQ reads that, runs it through a logistic pressure curve, and prints one line. No API key, no MCP tool calls, no self-reported numbers, near-zero overhead (stdlib-only).
 
-- Tracks tokens every turn automatically
-- Intelligence score (0–100) shows context pressure
-- Warns before your session gets dumb
-- Works as standalone chat OR plugged into Claude Code / Desktop
-
----
-
-## Modes
-
-| Mode | Best for | API key needed? |
-|------|---------|-----------------|
-| **MCP server** | Claude Code CLI, Claude Desktop, VSCode | No |
-| **Standalone chat** | Anyone, any terminal | Yes (Groq, free) |
-
----
-
-## Option A — MCP Server (recommended, no API key)
-
-Works with your existing Claude subscription.
-
-### 1. Clone & run setup
-
-```bash
-git clone https://github.com/sakethjaxx/context-iq.git
-cd context-iq
-pip install -r requirements.txt
-python setup.py
-```
-
-`setup.py` registers the MCP server automatically and prints the two manual steps below.
-
-### 2. Add to `~/.claude/settings.json`
-
-Open `~/.claude/settings.json` and add:
-
-```json
-{
-  "permissions": {
-    "allow": ["mcp__context-iq__*"]
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "python /path/to/context-iq/statusline.py",
-    "refreshInterval": 10
-  }
-}
-```
-
-> **Windows path example:** `"python C:\\Users\\you\\context-iq\\statusline.py"`
-
-### 3. Add to `~/.claude/CLAUDE.md`
-
-Create `~/.claude/CLAUDE.md` (or append to existing) and add:
-
-```markdown
-# ContextIQ — Auto Token Tracking
-
-After EVERY response you give, call the `context-iq__track_turn` MCP tool with:
-- `input_tokens`: your input token count for this turn
-- `output_tokens`: your output token count for this turn
-- `model`: your model name
-
-When the user asks "check context", "session health", or "intelligence score" — call
-`context-iq__get_intelligence_score` and show the result.
-
-When the user runs /clear or says "reset session" — call `context-iq__reset_session`.
-```
-
-### 4. Restart Claude Code
-
-Status bar appears:
-```
-🟢 IQ:100 | 0tok | 0turns
-```
-
-### 5. Ask anytime
-
-```
-check my context health
-```
-```
-what's my intelligence score
-```
-```
-session stats
-```
-
----
-
-## Option B — Standalone Chat (Groq, free tier)
-
-### 1. Clone & install
-
-```bash
-git clone https://github.com/sakethjaxx/context-iq.git
-cd context-iq
-pip install -r requirements.txt
-```
-
-### 2. Get a free Groq API key
-
-1. Sign up at [console.groq.com](https://console.groq.com) — no credit card
-2. **API Keys** → **Create API Key** → copy it
-
-### 3. Configure
-
-```bash
-cp .env.example .env
-```
-
-Open `.env`:
-```env
-PROVIDER=groq
-GROQ_API_KEY=gsk_your_key_here
-GROQ_MODEL=llama-3.3-70b-versatile
-```
-
-### 4. Run
-
-```bash
-python main.py
-```
-
----
-
-## What you see (standalone chat)
-
-```
-ContextIQ  model: llama-3.3-70b-versatile
-Type /help for commands.
-
-You> explain black holes
-
-╭─ Assistant ─────────────────────────────────────────────────╮
-│ A black hole is a region of spacetime where gravity is so   │
-│ strong that nothing — not even light — can escape...        │
-╰─────────────────────────────────────────────────────────────╯
-
-╭─ Session Stats ──────╮  ╭─ Intelligence Meter ──────────────────────────────╮
-│ Model   llama-3.3-70b│  │ Intelligence Score                                │
-│ Turns   3            │  │ ████████████████████████░░░░░░░░░░░░ 83/100 FRESH  │
-│ Input   9,240        │  │                                                   │
-│ Output  2,105        │  │ Context Pressure                                  │
-│ Total   11,345       │  │ ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 7.2% of 128k │
-╰──────────────────────╯  ╰───────────────────────────────────────────────────╯
-```
-
-### Commands
-
-| Command | What it does |
-|---------|-------------|
-| `/stats` | Token counts + intelligence meter |
-| `/reset` | Clear history, reset count |
-| `/model` | Show active model |
-| `/help` | Show all commands |
-| `/quit` | Exit |
-
----
-
-## Intelligence Meter explained
-
-Quality degrades non-linearly — fine until ~50% full, then drops fast.
+Quality degrades non-linearly — fine until ~50% full, then drops fast:
 
 | Score | Status | What to do |
 |-------|--------|------------|
 | 70–100 | 🟢 FRESH | Keep going |
 | 40–69 | 🟡 WARM | Monitor usage |
-| 15–39 | 🟠 STRAINED | Consider `/reset` or `/clear` |
-| 0–14 | 🔴 CRITICAL | Reset now |
+| 15–39 | 🟠 STRAINED | Consider `/clear` soon |
+| 0–14 | 🔴 CRITICAL | `/clear` now |
 
 ---
 
-## Platform support
+## Quick start — Claude Code (recommended)
 
-| Platform | Auto tracking | Live status bar | On-demand check |
-|----------|--------------|-----------------|-----------------|
-| Claude Code CLI | ✅ | ✅ | ✅ |
-| Claude Desktop | ✅ | ❌ | ✅ |
-| VSCode extension | ✅ | ❌ | ✅ |
+```bash
+pip install git+https://github.com/sakethjaxx/context-iq.git
+contextiq-setup
+```
 
-The status bar is a Claude Code CLI feature. Desktop and VSCode support tracking and on-demand checks via MCP tools.
+The setup wizard adds the status line to `~/.claude/settings.json` (with your confirmation, backing up the file first). Restart Claude Code and the meter appears after the first response.
+
+Prefer to configure manually? Add this to `~/.claude/settings.json`:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "python -m contextiq.statusline"
+  }
+}
+```
+
+> Use the full path to your Python if it isn't on Claude Code's PATH (e.g. `"C:/Users/you/AppData/Local/Programs/Python/Python312/python.exe -m contextiq.statusline"` on Windows — forward slashes work best there).
+
+That's it. **No CLAUDE.md instructions, no MCP server, no API key needed** — Claude Code supplies exact counts.
+
+### Live dashboard (optional)
+
+Run a full-size meter in a second terminal:
+
+```bash
+pip install "contextiq[watch] @ git+https://github.com/sakethjaxx/context-iq.git"
+contextiq-watch                 # follows the most recent session
+contextiq-watch <session_id>    # follows one session
+```
+
+Multiple concurrent sessions each get their own state file under `~/.claude/context-iq/` — they never clobber each other.
 
 ---
 
-## Supported models
+## Claude Desktop / hosts without a status line (MCP fallback)
 
-### Groq (free)
+Claude Desktop has no status line, so ContextIQ ships an MCP server the model can report into:
 
-| Model | Context | Best for |
-|-------|---------|----------|
-| `llama-3.3-70b-versatile` | 128k | Best quality (default) |
-| `llama-3.1-8b-instant` | 131k | Fastest |
-| `mixtral-8x7b-32768` | 32k | Balanced |
+```bash
+pip install "contextiq[mcp] @ git+https://github.com/sakethjaxx/context-iq.git"
+claude mcp add -s user context-iq python -- -m contextiq.mcp_server
+```
 
-### Claude (BYOK — standalone chat only)
+Then add to your global `CLAUDE.md` (or Desktop instructions):
+
+```markdown
+# ContextIQ — Token Tracking
+
+After EVERY response, call the `track_turn` MCP tool (server: context-iq) with your
+estimated `input_tokens`, `output_tokens`, and `model`.
+
+When asked about "context health", "session health", or "context pressure" — call
+`get_context_pressure_score` and show the result.
+
+When the session is cleared or reset — call `reset_session`.
+```
+
+> ⚠️ **Accuracy caveat:** models can't see their real token counts, so MCP-path numbers are estimates. The score is directional, not exact. In Claude Code, always prefer the status line — it's measured, not guessed.
+
+Tools exposed: `track_turn`, `get_context_pressure_score`, `get_session_stats`, `reset_session`.
+
+---
+
+## Standalone chat (any terminal, bring a key)
+
+Works with Groq (free tier), Claude, OpenAI, or any OpenAI-compatible endpoint (Ollama, LM Studio, OpenRouter, vLLM).
+
+```bash
+git clone https://github.com/sakethjaxx/context-iq.git
+cd context-iq
+pip install -e ".[chat]"
+cp .env.example .env      # add your key
+contextiq
+```
+
+Provider examples for `.env`:
 
 ```env
+# Groq — free tier, no credit card (console.groq.com)
+PROVIDER=groq
+GROQ_API_KEY=gsk_...
+GROQ_MODEL=llama-3.3-70b-versatile
+
+# Claude (console.anthropic.com)
 PROVIDER=claude
-ANTHROPIC_API_KEY=sk-ant-your_key_here
+ANTHROPIC_API_KEY=sk-ant-...
 ANTHROPIC_MODEL=claude-sonnet-4-6
+
+# Local models via Ollama — completely free & offline
+PROVIDER=ollama
+OPENAI_MODEL=llama3.2
+
+# OpenAI or any compatible endpoint (LM Studio, OpenRouter, vLLM...)
+PROVIDER=openai
+OPENAI_API_KEY=sk-...
+OPENAI_BASE_URL=          # optional, defaults to api.openai.com
+OPENAI_MODEL=gpt-4o-mini
 ```
 
-New? [console.anthropic.com](https://console.anthropic.com) — free $5 credits on signup.
+In-chat commands: `/stats`, `/reset`, `/model`, `/help`, `/quit`.
 
 ---
 
-## Add a new provider
+## What the score means (and doesn't)
 
-Subclass `BaseProvider` in [providers.py](providers.py):
-
-```python
-class OpenAIProvider(BaseProvider):
-    def __init__(self, api_key=None, model=None):
-        from openai import OpenAI
-        self._model = model or os.getenv("OPENAI_MODEL", "gpt-4o")
-        self._client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
-
-    @property
-    def model_id(self) -> str:
-        return self._model
-
-    def send(self, messages, system) -> ProviderResponse:
-        full_messages = [{"role": "system", "content": system}] + messages
-        res = self._client.chat.completions.create(
-            model=self._model, messages=full_messages, max_tokens=8096
-        )
-        return ProviderResponse(
-            text=res.choices[0].message.content,
-            input_tokens=res.usage.prompt_tokens,
-            output_tokens=res.usage.completion_tokens,
-        )
-```
-
-Add it to `get_provider()` and send a PR.
+- **Context pressure** = live context tokens ÷ usable window (window minus a response reserve). Real, measured.
+- **Score (0–100)** = a logistic curve over pressure: flat plateau until ~40%, noticeable decline 40–70%, steep 70–90%, cliff past 90%. The *shape* reflects how long-context degradation is commonly experienced, but the score is a **heuristic**, not a benchmark of your model's actual accuracy.
+- **Confidence** drops to `low` when live context suddenly shrinks >30% — usually hidden auto-compaction, which means earlier detail may already be lost.
+- Unknown models fall back to a 128k window (`confidence: medium`). Force a window with `CONTEXTIQ_CONTEXT_WINDOW=1000000`. Dated model IDs (`claude-haiku-4-5-20251001`) resolve by prefix automatically.
 
 ---
 
 ## Project structure
 
 ```
-context-iq/
-├── setup.py         # one-command setup for new users
-├── main.py          # standalone chat loop
-├── chat.py          # ChatSession wrapper
-├── providers.py     # GroqProvider, ClaudeProvider, BaseProvider
-├── meter.py         # intelligence score algorithm
-├── display.py       # rich terminal UI
-├── mcp_server.py    # MCP server (no API key needed)
-├── statusline.py    # status bar script for Claude Code
-├── CLAUDE.md        # copy to ~/.claude/CLAUDE.md for auto-tracking
-├── requirements.txt
-├── .env.example
-└── LICENSE          # MIT
+contextiq/
+├── meter.py        # pressure → score curve, model window table
+├── statusline.py   # Claude Code status line (stdlib-only, reads stdin JSON)
+├── state.py        # per-session atomic state files (~/.claude/context-iq/)
+├── watch.py        # live Rich dashboard  (contextiq-watch)
+├── mcp_server.py   # MCP fallback server (contextiq-mcp)
+├── providers.py    # Groq / Claude / OpenAI-compatible providers
+├── chat.py, cli.py, display.py   # standalone chat (contextiq)
+└── install.py      # setup wizard      (contextiq-setup)
+tests/              # pytest suite (runs in CI on Linux + Windows, py3.9–3.13)
 ```
 
----
+## Contributing
+
+```bash
+pip install -e ".[dev]"
+pytest
+```
+
+Add a provider by subclassing `BaseProvider` in `providers.py` and registering it in `PROVIDERS`. Add a model's context window to `MODEL_CONTEXT_WINDOWS` in `meter.py`. PRs welcome.
 
 ## License
 

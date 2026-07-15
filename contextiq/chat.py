@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
-from meter import SessionStats
-from providers import BaseProvider, get_provider
+
+from .meter import SessionStats
+from .providers import BaseProvider, get_provider
 
 load_dotenv()
 

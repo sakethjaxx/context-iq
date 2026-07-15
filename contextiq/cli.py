@@ -2,8 +2,9 @@ import sys
 import os
 from dotenv import load_dotenv
 from rich.prompt import Prompt
-from chat import ChatSession
-from display import print_response, print_stats, print_warning, console
+
+from .chat import ChatSession
+from .display import print_response, print_stats, print_warning, console
 
 load_dotenv()
 
@@ -25,7 +26,7 @@ def print_help():
 
 def main():
     provider_name = os.getenv("PROVIDER", "groq").lower()
-    key_map = {"groq": "GROQ_API_KEY", "claude": "ANTHROPIC_API_KEY"}
+    key_map = {"groq": "GROQ_API_KEY", "claude": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY"}
     required_key = key_map.get(provider_name)
     if required_key and not os.getenv(required_key):
         console.print(f"[red]Error: {required_key} not set for provider '{provider_name}'. Copy .env.example → .env and add key.[/red]")

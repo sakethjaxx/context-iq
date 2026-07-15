@@ -3,7 +3,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
-from meter import SessionStats
+
+from .meter import SessionStats
 
 # Force UTF-8 on Windows so block chars render correctly
 if sys.platform == "win32":

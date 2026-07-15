@@ -1,38 +1,43 @@
+"""ContextIQ MCP server.
+
+Fallback tracking for hosts without a status line (Claude Desktop, VSCode
+extensions). The model reports its token usage via track_turn — these are
+*estimates* (models cannot see their real usage), so treat scores from this
+path as approximate. In Claude Code, prefer the statusline, which receives
+exact counts from the host.
+"""
 import asyncio
 import json
-import os
+
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp import types
-from meter import SessionStats
 
-STATE_FILE = os.path.expanduser("~/.claude/context-iq-state.json")
-
-
-def _write_state(stats: SessionStats):
-    try:
-        with open(STATE_FILE, "w") as f:
-            json.dump({
-                "model": stats.model,
-                "turns": stats.turns,
-                "total_input_tokens": stats.total_input_tokens,
-                "total_output_tokens": stats.total_output_tokens,
-                "total_tokens": stats.total_tokens,
-                "live_context_tokens": stats.live_context_tokens,
-                "context_pressure_score": stats.context_pressure_score,
-                "raw_pressure": round(stats.raw_pressure * 100, 1),
-                "status": stats.status,
-                "confidence": stats.confidence,
-                "context_pressure": round(stats.context_pressure * 100, 1),
-                "context_window_source": "known" if stats.context_window_known else "defaulted",
-            }, f)
-    except Exception:
-        pass
+from .meter import SessionStats
+from .state import write_state
 
 # In-memory session — persists while server process runs
 _stats = SessionStats(model="claude-sonnet-4-6")
 
 app = Server("context-iq")
+
+
+def _state_dict(stats: SessionStats) -> dict:
+    return {
+        "source": "mcp",
+        "model": stats.model,
+        "turns": stats.turns,
+        "total_input_tokens": stats.total_input_tokens,
+        "total_output_tokens": stats.total_output_tokens,
+        "total_tokens": stats.total_tokens,
+        "live_context_tokens": stats.live_context_tokens,
+        "context_pressure_score": stats.context_pressure_score,
+        "raw_pressure": round(stats.raw_pressure * 100, 1),
+        "status": stats.status,
+        "confidence": stats.confidence,
+        "context_pressure": round(stats.context_pressure * 100, 1),
+        "context_window_source": "known" if stats.context_window_known else "defaulted",
+    }
 
 
 @app.list_tools()
@@ -89,7 +94,7 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         effective_input = arguments["input_tokens"] + cache_read + cache_creation
         _stats.update_live_context(effective_input + arguments["output_tokens"])
 
-        _write_state(_stats)
+        write_state(_state_dict(_stats))
         return [types.TextContent(type="text", text=json.dumps({
             "tracked": True,
             "turns": _stats.turns,
@@ -118,6 +123,7 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             "tokens_remaining":       max(0, _stats.usable_window - _stats.live_context_tokens),
             "context_window_source":  "known" if _stats.context_window_known else "defaulted",
             "recommendation":         recommendations[_stats.status],
+            "note": "Token counts are self-reported by the model and approximate.",
         }
         if _stats.confidence == "low":
             result["warning"] = "Sudden context drop detected — likely hidden compaction. Score may be optimistic."
@@ -151,7 +157,7 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
 
     elif name == "reset_session":
         _stats = SessionStats(model=_stats.model)
-        _write_state(_stats)
+        write_state(_state_dict(_stats))
         return [types.TextContent(type="text", text=json.dumps({
             "reset": True,
             "message": "Session cleared. Token counts at zero.",
@@ -160,10 +166,14 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
     return [types.TextContent(type="text", text=json.dumps({"error": f"Unknown tool: {name}"}))]
 
 
-async def run():
+async def _run():
     async with stdio_server() as (read_stream, write_stream):
         await app.run(read_stream, write_stream, app.create_initialization_options())
 
 
+def main() -> None:
+    asyncio.run(_run())
+
+
 if __name__ == "__main__":
-    asyncio.run(run())
+    main()

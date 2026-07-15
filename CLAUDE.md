@@ -1,10 +1,28 @@
-# ContextIQ — Auto Tracking
+# ContextIQ — Project Instructions
 
-After EVERY response you give, call the `track_turn` MCP tool with:
-- `input_tokens`: your input token count for this turn
-- `output_tokens`: your output token count for this turn
-- `model`: your model name
+ContextIQ is a context-health meter for AI sessions. Package code lives in
+`contextiq/`; tests in `tests/`.
 
-When the user asks anything like "check context", "session health", "how fresh are you", or "intelligence score" — call `get_intelligence_score` and show the result clearly.
+## Architecture rules
 
-When the user runs `/clear` or says "reset session" — call `reset_session`.
+- `contextiq/statusline.py`, `meter.py`, and `state.py` must stay **stdlib-only** —
+  the status line runs on every refresh and must start fast.
+- Real measurement beats self-reporting: in Claude Code, token data comes from the
+  statusline stdin payload. The MCP server (`mcp_server.py`) is a fallback for hosts
+  without a status line and its numbers are model-estimated — keep that caveat in
+  descriptions and docs.
+- State files are per-session and written atomically via `state.write_state`.
+  Never write shared state directly.
+
+## Development
+
+- Run tests with `pytest` before committing. Add tests for meter/statusline/state changes.
+- New providers: subclass `BaseProvider` in `providers.py`, register in `PROVIDERS`.
+- New models: add to `MODEL_CONTEXT_WINDOWS` in `meter.py` (prefix matching handles dated IDs).
+
+## Session health (dogfooding)
+
+If the ContextIQ MCP server is connected in this session, you may check health with
+`get_context_pressure_score` when asked about "context health" or "intelligence score",
+and call `reset_session` after `/clear`. Do not fabricate token counts for `track_turn`
+in Claude Code — the status line already tracks exactly.

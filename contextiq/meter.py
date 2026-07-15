@@ -1,23 +1,28 @@
 import math
+import os
 from dataclasses import dataclass, field
 from typing import Literal
 
 MODEL_CONTEXT_WINDOWS = {
     # Claude
+    "claude-opus-4-8": 200_000,
     "claude-opus-4-7": 200_000,
+    "claude-sonnet-5": 200_000,
     "claude-sonnet-4-6": 200_000,
-    "claude-haiku-4-5-20251001": 200_000,
+    "claude-sonnet-4-5": 200_000,
     "claude-haiku-4-5": 200_000,
-    # Groq / Llama
+    # Groq
     "llama-3.3-70b-versatile": 128_000,
-    "llama-3.1-70b-versatile": 128_000,
     "llama-3.1-8b-instant": 131_072,
-    "llama3-70b-8192": 8_192,
-    "llama3-8b-8192": 8_192,
-    # Groq / other
-    "mixtral-8x7b-32768": 32_768,
-    "gemma2-9b-it": 8_192,
-    "gemma-7b-it": 8_192,
+    "openai/gpt-oss-120b": 131_072,
+    "openai/gpt-oss-20b": 131_072,
+    "qwen/qwen3-32b": 131_072,
+    "moonshotai/kimi-k2-instruct": 131_072,
+    # OpenAI
+    "gpt-4o": 128_000,
+    "gpt-4o-mini": 128_000,
+    "gpt-4.1": 1_000_000,
+    "gpt-4.1-mini": 1_000_000,
 }
 DEFAULT_CONTEXT_WINDOW = 128_000
 RESPONSE_RESERVE = 4_096
@@ -31,6 +36,23 @@ _SCORE_LO = 1 / (1 + math.exp(_SCORE_K * (1.0 - _SCORE_C)))
 _SCORE_HI = 1 / (1 + math.exp(_SCORE_K * (0.0 - _SCORE_C)))
 
 
+def resolve_context_window(model: str) -> int:
+    """Look up a model's context window.
+
+    Order: CONTEXTIQ_CONTEXT_WINDOW env override → exact match → prefix match
+    (handles dated IDs like claude-haiku-4-5-20251001) → 0 (unknown).
+    """
+    env = os.getenv("CONTEXTIQ_CONTEXT_WINDOW")
+    if env and env.isdigit():
+        return int(env)
+    if model in MODEL_CONTEXT_WINDOWS:
+        return MODEL_CONTEXT_WINDOWS[model]
+    for known, window in MODEL_CONTEXT_WINDOWS.items():
+        if model.startswith(known):
+            return window
+    return 0
+
+
 @dataclass
 class SessionStats:
     model: str
@@ -42,6 +64,9 @@ class SessionStats:
     cache_creation_tokens: int = 0
     # Live — effective_input (incl. cache) + output; use for health/pressure
     live_context_tokens: int = 0
+    # Authoritative window size when the host reports one (e.g. Claude Code
+    # statusline payload); overrides the model-name lookup.
+    context_window_override: int = 0
     _prev_live_context_tokens: int = field(default=0, repr=False)
     _ema_live_context: float = field(default=0.0, repr=False)
 
@@ -59,11 +84,13 @@ class SessionStats:
 
     @property
     def context_window_known(self) -> bool:
-        return self.model in MODEL_CONTEXT_WINDOWS
+        return self.context_window_override > 0 or resolve_context_window(self.model) > 0
 
     @property
     def context_window(self) -> int:
-        return MODEL_CONTEXT_WINDOWS.get(self.model, DEFAULT_CONTEXT_WINDOW)
+        if self.context_window_override > 0:
+            return self.context_window_override
+        return resolve_context_window(self.model) or DEFAULT_CONTEXT_WINDOW
 
     @property
     def usable_window(self) -> int:

@@ -7,7 +7,7 @@ import io
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
-from meter import SessionStats
+from contextiq.meter import SessionStats
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text

@@ -1,0 +1,14 @@
+{
+  "name": "context-iq",
+  "displayName": "ContextIQ",
+  "version": "3.0.0",
+  "description": "Context-health score and early warnings before long Claude Code sessions degrade. Reads Claude Code's exact token usage: no API key, no per-turn tool calls.",
+  "author": {
+    "name": "sakethjaxx",
+    "url": "https://github.com/sakethjaxx"
+  },
+  "homepage": "https://github.com/sakethjaxx/context-iq",
+  "repository": "https://github.com/sakethjaxx/context-iq",
+  "license": "MIT",
+  "keywords": ["context", "tokens", "status-line", "compaction", "context-rot"]
+}

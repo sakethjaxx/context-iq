@@ -1,0 +1,16 @@
+{
+  "name": "context-iq",
+  "owner": {
+    "name": "sakethjaxx",
+    "url": "https://github.com/sakethjaxx"
+  },
+  "description": "ContextIQ: a context-health meter for Claude Code",
+  "plugins": [
+    {
+      "name": "context-iq",
+      "source": "./",
+      "description": "Context-health score, early warnings and an on-demand health check for Claude Code sessions.",
+      "category": "productivity"
+    }
+  ]
+}

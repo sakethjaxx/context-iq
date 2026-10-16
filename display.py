@@ -29,6 +29,7 @@ def render_stats_panel(stats: SessionStats) -> Panel:
     table.add_row("Input tokens", f"{stats.total_input_tokens:,}")
     table.add_row("Output tokens", f"{stats.total_output_tokens:,}")
     table.add_row("Total tokens", f"{stats.total_tokens:,}")
+    table.add_row("Live context", f"{stats.live_context_tokens:,}")
     if stats.cache_read_tokens:
         table.add_row("Cache read", f"{stats.cache_read_tokens:,}")
     if stats.cache_creation_tokens:
@@ -45,13 +46,18 @@ def render_meter_panel(stats: SessionStats) -> Panel:
 
     score_bar = _bar(int(bar_width * score / 100), bar_width, color)
     pressure_bar = _bar(int(bar_width * pressure), bar_width, "red")
+    window = f"{stats.effective_window // 1000}k"
+    if stats.effective_window < stats.context_window:
+        window += f" quality horizon ({stats.context_window // 1000}k window)"
+    else:
+        window += " window"
 
     content = Text.from_markup(
         f"[bold]Intelligence Score[/bold]\n"
         f"{score_bar} [{color}]{score:.0f}/100 {status}[/{color}]\n\n"
         f"[bold]Context Pressure[/bold]\n"
-        f"{pressure_bar} {pressure * 100:.1f}% of {stats.context_window // 1000}k window\n"
-        f"[dim]{stats.usable_window - stats.live_context_tokens:,} tokens remaining[/dim]"
+        f"{pressure_bar} {pressure * 100:.1f}% of {window}\n"
+        f"[dim]{max(0, stats.usable_window - stats.live_context_tokens):,} tokens before the score bottoms out[/dim]"
     )
     return Panel(content, title="Intelligence Meter", border_style=color)
 

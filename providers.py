@@ -71,8 +71,10 @@ class ClaudeProvider(BaseProvider):
             messages=messages,
         )
         usage = response.usage
+        # Newer models can return thinking blocks before the text.
+        text = "".join(block.text for block in response.content if block.type == "text")
         return ProviderResponse(
-            text=response.content[0].text,
+            text=text,
             input_tokens=usage.input_tokens,
             output_tokens=usage.output_tokens,
             cache_read_tokens=getattr(usage, "cache_read_input_tokens", 0) or 0,

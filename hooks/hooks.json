@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/contextiq.py\" hook || python \"${CLAUDE_PLUGIN_ROOT}/contextiq.py\" hook",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
